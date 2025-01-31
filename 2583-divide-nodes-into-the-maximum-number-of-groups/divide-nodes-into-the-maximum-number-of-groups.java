@@ -1,105 +1,89 @@
 class Solution {
-
-    // Main function to calculate the maximum number of groups for the entire graph
-    public int magnificentSets(int n, int[][] edges) {
-        List<List<Integer>> adjList = new ArrayList<>();
+    public boolean bipartite(List<ArrayList<Integer>> adj, int n) {
+        int color[] = new int[n];
+        Arrays.fill(color, -1);
         for (int i = 0; i < n; i++) {
-            adjList.add(new ArrayList<>());
-        }
-        int[] parent = new int[n];
-        int[] depth = new int[n];
-        Arrays.fill(parent, -1);
-
-        // Build the adjacency list and apply Union-Find for each edge
-        for (int[] edge : edges) {
-            adjList.get(edge[0] - 1).add(edge[1] - 1);
-            adjList.get(edge[1] - 1).add(edge[0] - 1);
-            union(edge[0] - 1, edge[1] - 1, parent, depth);
-        }
-
-        Map<Integer, Integer> numOfGroupsForComponent = new HashMap<>();
-
-        // For each node, calculate the maximum number of groups for its component
-        for (int node = 0; node < n; node++) {
-            int numberOfGroups = getNumberOfGroups(adjList, node, n);
-            if (numberOfGroups == -1) return -1; // If invalid split, return -1
-            int rootNode = find(node, parent);
-            numOfGroupsForComponent.put(
-                rootNode,
-                Math.max(
-                    numOfGroupsForComponent.getOrDefault(rootNode, 0),
-                    numberOfGroups
-                )
-            );
-        }
-
-        // Calculate the total number of groups across all components
-        int totalNumberOfGroups = 0;
-        for (int numberOfGroups : numOfGroupsForComponent.values()) {
-            totalNumberOfGroups += numberOfGroups;
-        }
-        return totalNumberOfGroups;
-    }
-
-    // Function to calculate the number of groups for a given component starting from srcNode
-    private int getNumberOfGroups(
-        List<List<Integer>> adjList,
-        int srcNode,
-        int n
-    ) {
-        Queue<Integer> nodesQueue = new LinkedList<>();
-        int[] layerSeen = new int[n];
-        Arrays.fill(layerSeen, -1);
-        nodesQueue.offer(srcNode);
-        layerSeen[srcNode] = 0;
-        int deepestLayer = 0;
-
-        // Perform BFS to calculate the number of layers (groups)
-        while (!nodesQueue.isEmpty()) {
-            int numOfNodesInLayer = nodesQueue.size();
-            for (int i = 0; i < numOfNodesInLayer; i++) {
-                int currentNode = nodesQueue.poll();
-                for (int neighbor : adjList.get(currentNode)) {
-                    // If neighbor hasn't been visited, assign it to the next layer
-                    if (layerSeen[neighbor] == -1) {
-                        layerSeen[neighbor] = deepestLayer + 1;
-                        nodesQueue.offer(neighbor);
-                    } else {
-                        // If the neighbor is already in the same layer, return -1 (invalid partition)
-                        if (layerSeen[neighbor] == deepestLayer) {
-                            return -1;
-                        }
+            if (color[i] == -1) {
+                color[i] = 0;
+                Queue<Integer> q = new LinkedList<>();
+                q.offer(i);
+                while (!q.isEmpty()) {
+                    int u = q.poll();
+                    for (int v : adj.get(u)) {
+                        if (color[v] == -1) {
+                            color[v] = 1 - color[u];
+                            q.offer(v);
+                        } else if (color[v] == color[u])
+                            return false;
                     }
                 }
             }
-            deepestLayer++;
         }
-        return deepestLayer;
+        return true;
     }
 
-    // Find the root of the given node in the Union-Find structure
-    private int find(int node, int[] parent) {
-        while (parent[node] != -1) node = parent[node];
-        return node;
+    public int getMaxFromEachPart(List<ArrayList<Integer>> adj, int n, int node, int levels[], boolean visited[]) {
+        visited[node] = true;
+        int max = levels[node];
+        for (int v : adj.get(node)) {
+            if (!visited[v]) {
+                max = Math.max(max, getMaxFromEachPart(adj, n, v, levels, visited));
+            }
+        }
+        return max;
     }
 
-    // Union operation to merge two sets
-    private void union(int node1, int node2, int[] parent, int[] depth) {
-        node1 = find(node1, parent);
-        node2 = find(node2, parent);
-
-        // If both nodes already belong to the same set, no action needed
-        if (node1 == node2) return;
-
-        // Union by rank (depth) to keep the tree balanced
-        if (depth[node1] < depth[node2]) {
-            int temp = node1;
-            node1 = node2;
-            node2 = temp;
+    public int bfs(List<ArrayList<Integer>> adj, int n, int node) {
+        Queue<Integer> q = new LinkedList<>();
+        q.offer(node);
+        boolean visited[] = new boolean[n];
+        visited[node] = true;
+        int level = 1;
+        while (!q.isEmpty()) {
+            int size = q.size();
+            while (size > 0) {
+                int currNode = q.poll();
+                for (int v : adj.get(currNode)) {
+                    if (visited[v])
+                        continue;
+                    q.offer(v);
+                    visited[v] = true;
+                }
+                size--;
+            }
+            level++;
         }
-        parent[node2] = node1;
+        return level - 1;
+    }
 
-        // If the depths are equal, increment the depth of the new root
-        if (depth[node1] == depth[node2]) depth[node1]++;
+    public int magnificentSets(int n, int[][] edges) {
+        int answer = 0;
+        List<ArrayList<Integer>> adj = new ArrayList<>();
+        for (int i = 0; i < n; i++) {
+            adj.add(new ArrayList<Integer>());
+        }
+        for (int i = 0; i < edges.length; i++) {
+            int u = edges[i][0] - 1;
+            int v = edges[i][1] - 1;
+            adj.get(u).add(v);
+            adj.get(v).add(u);
+        }
+        if (!bipartite(adj, n))
+            return -1;
+
+        // now bfs from every node and give whatever maximum levels are found to the
+        // levels array
+        int levels[] = new int[n];
+        for (int i = 0; i < n; i++) {
+            levels[i] = bfs(adj, n, i);
+        }
+        boolean visited[] = new boolean[n];
+        for (int i = 0; i < n; i++) {
+            if (!visited[i]) {
+                int componentMax = getMaxFromEachPart(adj, n, i, levels, visited);
+                answer += componentMax;
+            }
+        }
+        return answer;
     }
 }
