@@ -1,5 +1,5 @@
 class MedianFinder {
-    PriorityQueue<Integer> min = new PriorityQueue<>((a,b)->(a-b));
+    PriorityQueue<Integer> min = new PriorityQueue<>();
     PriorityQueue<Integer> max = new PriorityQueue<>((a,b)->(b-a));
     public MedianFinder() {
         
