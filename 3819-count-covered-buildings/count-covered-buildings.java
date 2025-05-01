@@ -21,7 +21,7 @@ class Solution {
             int yMax = row.get(x)[1];
             int xMin = col.get(y)[0];
             int xMax = col.get(y)[1];
-            if(y > yMin && y < yMax && x > xMin && x < xMax){
+            if(y != yMin && y != yMax && x != xMin && x != xMax){
                 answer++;
             }
         }
